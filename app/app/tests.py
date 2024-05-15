@@ -2,7 +2,7 @@
 Sample tests
 """
 from django.test import SimpleTestCase
-from calc import add
+from .calc import add
 
 
 class CalcTests(SimpleTestCase):
