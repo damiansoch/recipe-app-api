@@ -10,7 +10,7 @@ from core import models
 class UserAdmin(BaseUserAdmin):
     """Define the admin pages for users"""
     ordering = ['id']
-    list_display = ['email', 'name']
+    list_display = ['email', 'name']  # are shown in the user list view
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         (
@@ -18,7 +18,13 @@ class UserAdmin(BaseUserAdmin):
             {'fields': ('is_active', 'is_staff', 'is_superuser')}
         ),
         (_('Important dates'), {'fields': ('last_login',)}),
-    )
+    )  # Fields to display on the user change page.
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email', 'password1', 'password2'),
+        }),
+    )  # Fields to display on the user creation form.
     readonly_fields = ['last_login']
 
 
