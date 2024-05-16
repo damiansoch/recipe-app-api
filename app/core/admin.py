@@ -22,7 +22,7 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'password1', 'password2'),
+            'fields': ('email', 'password1', 'password2', "name", "is_active", "is_staff", "is_superuser"),
         }),
     )  # Fields to display on the user creation form.
     readonly_fields = ['last_login']
