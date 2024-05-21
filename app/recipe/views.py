@@ -1,6 +1,8 @@
 """
 Views for the recipe app.
 """
+from drf_spectacular.utils import (extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes)
+
 from rest_framework import (viewsets, mixins, status)
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +13,22 @@ from core.models import (Recipe, Tag, Ingredient)
 from recipe import serializers
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "tags",
+                OpenApiTypes.STR,
+                description="Comma separated list of Tag IDs to filter"
+            ),
+            OpenApiParameter(
+                "ingredients",
+                OpenApiTypes.STR,
+                description="Comma separated list of Ingredients IDs to filter"
+            )
+        ]
+    )
+)
 class RecipeViewSet(viewsets.ModelViewSet):
     """View for manage recipe APIS"""
     serializer_class = serializers.RecipeDetailSerializer
@@ -18,9 +36,23 @@ class RecipeViewSet(viewsets.ModelViewSet):
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
+    def params_to_ints(self, qs):
+        """convert params to ints"""
+        return [int(str_id) for str_id in qs.split(',')]
+
     def get_queryset(self):
         """We are overwrite this method because we want user to be able to change only his own recipies"""
-        return self.queryset.filter(user=self.request.user).order_by('-id')
+        tags = self.request.query_params.get('tags')
+        ingredients = self.request.query_params.get('ingredients')
+        queryset = self.queryset
+        if tags:
+            tag_ids = self.params_to_ints(tags)
+            queryset = queryset.filter(tags__id__in=tag_ids)
+        if ingredients:
+            ingredient_ids = self.params_to_ints(ingredients)
+            queryset = queryset.filter(ingredients__id__in=ingredient_ids)
+
+        return queryset.filter(user=self.request.user).order_by('-id').distinct()
 
     def get_serializer_class(self):
         """Return appropriate serializer class"""
@@ -43,10 +75,23 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-        
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "assigned_only",
+                OpenApiTypes.STR,
+                description="Filter by items assigned to recipies",
+                enum=["0", "1"],  # Restrict allowed values to '0' and '1'
+                default="0"  # Set default value to '0'
+            )
+        ]
+    )
+)
 class BaseRecipeAttrViewSet(mixins.DestroyModelMixin,
                             mixins.UpdateModelMixin,
                             mixins.ListModelMixin,
@@ -57,7 +102,11 @@ class BaseRecipeAttrViewSet(mixins.DestroyModelMixin,
 
     def get_queryset(self):
         """We are overwrite this method because we want user to be able to change only his own ingredients"""
-        return self.queryset.filter(user=self.request.user).order_by('-name')
+        assigned_only = int(bool(self.request.query_params.get('assigned_only', False)))
+        queryset = self.queryset
+        if assigned_only:
+            queryset = queryset.filter(recipe__isnull=False)
+        return queryset.filter(user=self.request.user).order_by('-name').distinct()
 
 
 class TagViewSet(BaseRecipeAttrViewSet):
