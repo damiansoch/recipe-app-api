@@ -88,4 +88,23 @@ class RecipeDetailSerializer(RecipeSerializer):
     """Serializer for Recipe detail view"""
 
     class Meta(RecipeSerializer.Meta):
-        fields = RecipeSerializer.Meta.fields + ['description']
+        fields = RecipeSerializer.Meta.fields + ['description', 'image']
+
+
+class RecipeImageSerializer(serializers.ModelSerializer):
+    """Serializer for Recipe image view"""
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'image')
+        read_only_fields = ('id',)
+        extra_kwargs = {'image': {'required': "True"}}
+
+    @staticmethod
+    def validate_image(value):
+        """Check that the uploaded file is an image and not empty"""
+        if not value:
+            raise serializers.ValidationError('No image provided')
+        if not value.name.lower().endswith(('png', 'jpg', 'jpeg')):
+            raise serializers.ValidationError('Invalid image format')
+        return value
